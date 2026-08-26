@@ -28,7 +28,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   useEffect(() => {
-    if (isInitialized) {
+    if (isInitialized && theme) {
       localStorage.setItem("theme", theme);
       if (theme === "dark") {
         document.documentElement.classList.add("dark");

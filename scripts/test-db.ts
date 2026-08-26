@@ -1,8 +1,13 @@
 /**
  * 数据层烟雾测试：仅在开发期手工运行，CI 不调用。
  * 执行：`npx tsx scripts/test-db.ts`
+ *
+ * 走子路径直接引用 markets.ts / klines.ts，避免被客户端 barrel 误吞
+ * node:fs（参见 src/lib/db/index.ts 的注释）。
  */
-import { markets, klines, ASSETS } from "../src/lib/db";
+import { ASSETS } from "../src/lib/db/constants";
+import * as markets from "../src/lib/db/markets";
+import * as klines from "../src/lib/db/klines";
 
 function log(label: string, payload: unknown) {
   const s = JSON.stringify(payload, (_, v) =>
