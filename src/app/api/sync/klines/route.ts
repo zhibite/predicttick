@@ -10,9 +10,16 @@ import path from "node:path";
 interface KlineInput {
   token_id: string;
   slug: string;
+  period?: string;
   time_ms: number;
   price: number;
   volume: number;
+}
+
+function derivePeriod(slug: string): string {
+  // btc-up-or-down-5m-1764042000 -> "5m"
+  const m = /-(15m|5m|1m|30m|1h)-/.exec(slug);
+  return m ? m[1] : "5m";
 }
 
 export async function POST(request: NextRequest) {
@@ -35,33 +42,38 @@ export async function POST(request: NextRequest) {
     const targetDb = files.sort().at(-1)!;
     const db = new Database(targetDb);
 
-    // 确保 klines 表存在（如果不存在则创建）
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS klines (
-        token_id TEXT NOT NULL,
-        slug TEXT NOT NULL,
-        time_ms INTEGER NOT NULL,
-        price REAL NOT NULL,
-        volume REAL NOT NULL,
-        PRIMARY KEY (token_id, time_ms)
-      ) WITHOUT ROWID;
-      CREATE INDEX IF NOT EXISTS idx_klines_slug ON klines(slug);
-    `);
+    // 探测表结构，决定要绑哪些列
+    const cols = db.prepare("PRAGMA table_info(klines)").all() as { name: string }[];
+    const colSet = new Set(cols.map((c) => c.name));
+    const hasPeriod = colSet.has("period");
 
-    const insert = db.prepare(`
-      INSERT OR REPLACE INTO klines (token_id, slug, time_ms, price, volume)
-      VALUES (@token_id, @slug, @time_ms, @price, @volume)
-    `);
+    // 如果表没有 period 列但 payload 要求，扩表（兼容 gmgndata 旧结构）
+    if (hasPeriod) {
+      // gmgndata 表已含 period 列，按表实际结构写
+    } else {
+      // 不动 DDL，由客户端通过 state 接口感知；当前表没 period 不影响
+    }
+
+    // 动态构建 INSERT（只绑表里有的列）
+    const fields = ["token_id", "slug", "time_ms", "price", "volume"];
+    if (hasPeriod) fields.push("period");
+    const placeholders = fields.map((f) => `@${f}`).join(", ");
+    const insertSql = `INSERT OR REPLACE INTO klines (${fields.join(", ")}) VALUES (${placeholders})`;
+    const insert = db.prepare(insertSql);
 
     const insertMany = db.transaction((items: KlineInput[]) => {
       for (const k of items) {
-        insert.run({
+        const row: Record<string, any> = {
           token_id: k.token_id,
           slug: k.slug,
           time_ms: k.time_ms,
           price: k.price,
           volume: k.volume,
-        });
+        };
+        if (hasPeriod) {
+          row.period = (k.period && k.period.length > 0) ? k.period : derivePeriod(k.slug);
+        }
+        insert.run(row);
       }
     });
 
