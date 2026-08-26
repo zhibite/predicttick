@@ -66,7 +66,6 @@ export async function POST(request: NextRequest) {
     });
 
     insertMany(klines);
-    db.checkpoint(); // 强制 WAL checkpoint
     db.close();
 
     return NextResponse.json({ inserted: klines.length, asset, file: path.basename(targetDb) });
