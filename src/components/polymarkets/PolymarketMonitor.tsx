@@ -3,19 +3,25 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Asset, Period } from "@/lib/db/constants";
 import type { MarketsPageResponse, AssetStat } from "@/types/polymarkets";
-import AssetNav from "@/components/polymarkets/AssetNav";
 import WindowCard from "@/components/polymarkets/WindowCard";
 import Pagination from "@/components/polymarkets/Pagination";
-import { assetIcon } from "@/lib/format";
 
 interface Health {
   dataDir: string;
   exists: boolean;
 }
 
-export default function PolymarketMonitor() {
-  const [asset, setAsset] = useState<Asset>("btc");
-  const [period, setPeriod] = useState<Period>("5m");
+interface PolymarketMonitorProps {
+  initialPeriod?: Period;
+  initialAsset?: Asset;
+}
+
+export default function PolymarketMonitor({
+  initialPeriod = "5m",
+  initialAsset = "btc",
+}: PolymarketMonitorProps) {
+  const [asset, setAsset] = useState<Asset>(initialAsset);
+  const [period, setPeriod] = useState<Period>(initialPeriod);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(12);
   const [stats, setStats] = useState<AssetStat[]>([]);
@@ -24,7 +30,7 @@ export default function PolymarketMonitor() {
   const [error, setError] = useState<string | null>(null);
   const [health, setHealth] = useState<Health | null>(null);
 
-  // 加载 stats + health
+  // Load stats + health
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -49,7 +55,7 @@ export default function PolymarketMonitor() {
     };
   }, []);
 
-  // 加载市场页
+  // Load market page
   const loadPage = useCallback(
     async (p: number, ps: number, a: Asset = asset, per: Period = period) => {
       setLoading(true);
@@ -70,7 +76,7 @@ export default function PolymarketMonitor() {
     [asset, period],
   );
 
-  // 切换资产 / 周期时重置
+  // Reset on asset/period change
   const handleSelect = useCallback(
     (a: Asset, per: Period) => {
       setAsset(a);
@@ -91,7 +97,7 @@ export default function PolymarketMonitor() {
     [loadPage, pageSize],
   );
 
-  // 初次加载
+  // Initial load
   useEffect(() => {
     loadPage(1, pageSize);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -100,102 +106,55 @@ export default function PolymarketMonitor() {
   const total = data?.total ?? 0;
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-zinc-950 text-zinc-100">
-      <AssetNav
-        stats={stats}
-        currentAsset={asset}
-        currentPeriod={period}
-        onSelect={handleSelect}
-        health={health}
-      />
-
-      <main className="flex flex-1 flex-col overflow-hidden">
-        {/* Header */}
-        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-zinc-800 bg-zinc-900/40 px-6 py-4">
-          <div className="flex items-center gap-3">
-            <span className="text-3xl font-bold text-brand-400">
-              {assetIcon(asset)}
-            </span>
-            <div>
-              <h1 className="flex items-center gap-2 text-xl font-semibold">
-                {asset.toUpperCase()}
-                <span className="rounded-md bg-zinc-800 px-2 py-0.5 text-xs font-medium text-zinc-300">
-                  {period.toUpperCase()}
-                </span>
-                <span className="text-sm font-normal text-zinc-500">窗口列表</span>
-              </h1>
-              <p className="mt-0.5 text-xs text-zinc-500">
-                {loading
-                  ? "加载中..."
-                  : error
-                    ? `加载失败：${error}`
-                    : `共 ${total.toLocaleString()} 个窗口 · 倒序排列（最新在前）`}
-              </p>
-            </div>
+    <div className="flex flex-col gap-0">
+      {/* Content */}
+      {error && !data && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center dark:border-red-500/20 dark:bg-red-500/5">
+          <div className="text-4xl mb-2">⚠️</div>
+          <div className="text-sm text-red-500 font-medium">Cannot connect to data source</div>
+          <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            Verify the <code className="bg-gray-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono">GMGN_DATA_DIR</code>{" "}
+            environment variable or data directory is accessible.
           </div>
-
-          <div className="flex items-center gap-2 text-[11px]">
-            <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-500/10 px-2.5 py-1 text-emerald-400">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              LIVE
-            </span>
-            <span className="rounded-md bg-zinc-800 px-2.5 py-1 text-zinc-400">
-              {pageSize} / 页
-            </span>
-          </div>
-        </header>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-5">
-          {error && !data && (
-            <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-6 text-center">
-              <div className="text-4xl mb-2">⚠️</div>
-              <div className="text-sm text-red-400">无法连接到数据源</div>
-              <div className="mt-2 text-xs text-zinc-500">
-                检查 <code className="bg-zinc-900 px-2 py-0.5 rounded">GMGN_DATA_DIR</code>{" "}
-                环境变量或数据目录是否可访问。
-              </div>
-            </div>
-          )}
-
-          {!error && data && data.windows.length === 0 && (
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-12 text-center text-zinc-500">
-              <div className="text-4xl mb-3">📭</div>
-              <div>暂无 {asset.toUpperCase()} {period.toUpperCase()} 数据</div>
-            </div>
-          )}
-
-          {data && data.windows.length > 0 && (
-            <>
-              <div className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
-                {data.windows.map((w, i) => (
-                  <WindowCard
-                    key={w.slug}
-                    slug={w.slug}
-                    asset={w.asset}
-                    period={w.period}
-                    startEpoch={w.start_epoch}
-                    endEpoch={w.end_epoch}
-                    status={w.status}
-                    volume={w.volume}
-                    up={w.up}
-                    down={w.down}
-                    index={(page - 1) * pageSize + i}
-                  />
-                ))}
-              </div>
-              <div className="mt-6">
-                <Pagination
-                  page={page}
-                  total={total}
-                  pageSize={pageSize}
-                  onChange={handlePageChange}
-                />
-              </div>
-            </>
-          )}
         </div>
-      </main>
+      )}
+
+      {!error && data && data.windows.length === 0 && (
+        <div className="rounded-xl border border-gray-200 bg-gray-50 dark:border-zinc-700 dark:bg-zinc-800/40 p-12 text-center text-gray-400 dark:text-gray-500">
+          <div className="text-4xl mb-3">📭</div>
+          <div>No {asset.toUpperCase()} {period.toUpperCase()} data yet</div>
+        </div>
+      )}
+
+      {data && data.windows.length > 0 && (
+        <>
+          <div className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
+            {data.windows.map((w, i) => (
+              <WindowCard
+                key={w.slug}
+                slug={w.slug}
+                asset={w.asset}
+                period={w.period}
+                startEpoch={w.start_epoch}
+                endEpoch={w.end_epoch}
+                status={w.status}
+                volume={w.volume}
+                up={w.up}
+                down={w.down}
+                index={(page - 1) * pageSize + i}
+              />
+            ))}
+          </div>
+          <div className="mt-6">
+            <Pagination
+              page={page}
+              total={total}
+              pageSize={pageSize}
+              onChange={handlePageChange}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }

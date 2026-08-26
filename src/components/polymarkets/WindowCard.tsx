@@ -21,10 +21,11 @@ export interface WindowCardProps {
 }
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
-  live: { label: "LIVE", cls: "bg-emerald-500/15 text-emerald-400" },
-  closed: { label: "CLOSED", cls: "bg-red-500/15 text-red-400" },
-  pending: { label: "PENDING", cls: "bg-sky-500/15 text-sky-400" },
-  unknown: { label: "—", cls: "bg-zinc-500/15 text-zinc-400" },
+  live: { label: "LIVE", cls: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400" },
+  closed: { label: "CLOSED", cls: "bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400" },
+  pending: { label: "PENDING", cls: "bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400" },
+  resolved: { label: "RESOLVED", cls: "bg-gray-100 text-gray-500 dark:bg-zinc-700 dark:text-gray-400" },
+  unknown: { label: "—", cls: "bg-gray-100 text-gray-400 dark:bg-zinc-700 dark:text-gray-500" },
 };
 
 function statusBadge(status: string) {
@@ -81,29 +82,29 @@ export default function WindowCard(props: WindowCardProps) {
         : volume.toFixed(0);
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 overflow-hidden">
+    <div className="rounded-xl border border-gray-200 bg-white dark:border-zinc-700 dark:bg-zinc-900 overflow-hidden shadow-sm">
       {/* Header */}
-      <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-zinc-800">
+      <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-gray-100 dark:border-zinc-700">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-800 text-[11px] font-semibold text-zinc-400">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 dark:bg-zinc-800 text-[11px] font-semibold text-gray-400 dark:text-gray-500">
             {index + 1}
           </span>
-          <span className="truncate font-mono text-[12px] text-zinc-200">{slug}</span>
+          <span className="truncate font-mono text-[12px] text-gray-700 dark:text-gray-200">{slug}</span>
           {statusBadge(status)}
         </div>
         <div className="flex items-center gap-2 text-[12px] font-semibold">
-          <span className="text-emerald-400 tabular-nums">
+          <span className="text-emerald-600 dark:text-emerald-400 tabular-nums">
             {summary.lastUp !== null ? summary.lastUp.toFixed(4) : "—"}
           </span>
-          <span className="text-zinc-600">/</span>
-          <span className="text-red-400 tabular-nums">
+          <span className="text-gray-300 dark:text-gray-600">/</span>
+          <span className="text-red-500 dark:text-red-400 tabular-nums">
             {summary.lastDown !== null ? summary.lastDown.toFixed(4) : "—"}
           </span>
         </div>
       </div>
 
       {/* Meta line */}
-      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 text-[10px] text-zinc-500 border-b border-zinc-800">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 text-[10px] text-gray-400 dark:text-gray-500 border-b border-gray-100 dark:border-zinc-700">
         <span>
           {fmtBeijingDateTime(startEpoch)} → {fmtBeijingDateTime(endEpoch)} · {period.toUpperCase()} · Vol{" "}
           {volumeStr}
@@ -111,20 +112,20 @@ export default function WindowCard(props: WindowCardProps) {
         <div className="flex gap-1">
           <button
             onClick={() => setMode("line")}
-            className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+            className={`rounded px-1.5 py-0.5 text-[10px] font-medium transition ${
               mode === "line"
-                ? "bg-zinc-700 text-white"
-                : "text-zinc-500 hover:text-zinc-300"
+                ? "bg-brand-500 text-white"
+                : "text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-700"
             }`}
           >
             Line
           </button>
           <button
             onClick={() => setMode("candle")}
-            className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+            className={`rounded px-1.5 py-0.5 text-[10px] font-medium transition ${
               mode === "candle"
-                ? "bg-zinc-700 text-white"
-                : "text-zinc-500 hover:text-zinc-300"
+                ? "bg-brand-500 text-white"
+                : "text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-700"
             }`}
           >
             Candle
@@ -146,7 +147,7 @@ export default function WindowCard(props: WindowCardProps) {
       </div>
 
       {/* Legend / summary */}
-      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 border-t border-zinc-800 text-[10px] text-zinc-500">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 border-t border-gray-100 dark:border-zinc-700 text-[10px] text-gray-400 dark:text-gray-500">
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
@@ -157,7 +158,7 @@ export default function WindowCard(props: WindowCardProps) {
             DOWN · {summary.dnCount} pts · H {summary.dnHigh.toFixed(3)} / L {summary.dnLow.toFixed(3)}
           </span>
         </div>
-        <span className="text-zinc-600">
+        <span className="text-gray-400 dark:text-gray-500">
           {assetIcon(asset)} {asset.toUpperCase()}
         </span>
       </div>

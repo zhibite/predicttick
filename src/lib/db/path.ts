@@ -47,7 +47,15 @@ export function listAssetDbFiles(asset: Asset): string[] {
 }
 
 export function marketsDbPath(): string {
-  return path.join(getDataDir(), "markets.db");
+  const dir = getDataDir();
+  const candidates = fs.existsSync(dir)
+    ? fs.readdirSync(dir).filter((n) => n === "markets.db" || /^markets_\d+\.db$/.test(n))
+    : [];
+  if (candidates.length > 0) {
+    candidates.sort();
+    return path.join(dir, candidates[candidates.length - 1]);
+  }
+  return path.join(dir, "markets.db");
 }
 
 export function listAvailableAssets(): Asset[] {

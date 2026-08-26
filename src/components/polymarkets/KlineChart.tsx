@@ -1,11 +1,9 @@
 /**
- * 轻量级图表组件。
- * - mode='line'    : UP/DOWN 双折线（每侧一个 series）
- * - mode='candle'  : 把秒级 tick 聚合成 5 秒 / 15 秒 / 30 秒 K 线
+ * Lightweight chart component.
+ * - mode='line'    : UP/DOWN dual line series
+ * - mode='candle'  : Aggregates tick data into 5s / 15s / 30s candles
  *
- * 注：K 线聚合在客户端做；5 分钟窗口最长 ~600 tick，秒级聚合后 ~120 根 K 线，渲染压力小。
- *
- * lightweight-charts v4.x：使用 chart.addLineSeries() / chart.addCandlestickSeries()。
+ * Chart colors adapt to TailAdmin light/dark theme via ThemeContext.
  */
 "use client";
 
@@ -19,17 +17,16 @@ import {
 } from "lightweight-charts";
 import type { KlineTick } from "@/lib/db/klines";
 import { msToBeijingSec } from "@/lib/format";
+import { useTheme } from "@/context/ThemeContext";
 
 type Mode = "line" | "candle";
 
 export interface KlineChartProps {
   up: KlineTick[];
   down: KlineTick[];
-  /** K 线聚合秒数（仅 candle 模式生效） */
   bucketSec?: 5 | 15 | 30;
   mode?: Mode;
   height?: number;
-  /** 锁定窗口范围（秒，UTC+8 时间戳） */
   visibleFromSec?: number;
   visibleToSec?: number;
   className?: string;
@@ -75,6 +72,40 @@ function aggregate(ticks: KlineTick[], bucketSec: number): CandleBar[] {
   return bars;
 }
 
+const LIGHT = {
+  background: "#ffffff",
+  textColor: "#475467",
+  gridVert: "#e4e7ec",
+  gridHorz: "#e4e7ec",
+  border: "#e4e7ec",
+  crosshair: "#465fff",
+  upLine: "#12b76a",
+  downLine: "#f04438",
+  upCandle: "#12b76a",
+  upCandleBorder: "#12b76a",
+  upCandleWick: "#12b76a",
+  downCandle: "#f04438",
+  downCandleBorder: "#f04438",
+  downCandleWick: "#f04438",
+};
+
+const DARK = {
+  background: "#0f141b",
+  textColor: "#8b949e",
+  gridVert: "#1f2937",
+  gridHorz: "#1f2937",
+  border: "#30363d",
+  crosshair: "#465fff",
+  upLine: "#3fb950",
+  downLine: "#f85149",
+  upCandle: "#3fb950",
+  upCandleBorder: "#3fb950",
+  upCandleWick: "#3fb950",
+  downCandle: "#f85149",
+  downCandleBorder: "#f85149",
+  downCandleWick: "#f85149",
+};
+
 export default function KlineChart({
   up,
   down,
@@ -85,39 +116,39 @@ export default function KlineChart({
   visibleToSec,
   className,
 }: KlineChartProps) {
+  const { theme = "light" } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
-  const seriesUpRef = useRef<ISeriesApi<"Line"> | ISeriesApi<"Candlestick"> | null>(
-    null,
-  );
-  const seriesDownRef = useRef<ISeriesApi<"Line"> | ISeriesApi<"Candlestick"> | null>(
-    null,
-  );
+  const seriesUpRef = useRef<ISeriesApi<"Line"> | ISeriesApi<"Candlestick"> | null>(null);
+  const seriesDownRef = useRef<ISeriesApi<"Line"> | ISeriesApi<"Candlestick"> | null>(null);
 
-  // 初始化图表
+  const c = theme === "dark" ? DARK : LIGHT;
+
+  // Init chart
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
     const width = container.clientWidth || 320;
+
     const chart = createChart(container, {
       width,
       height,
       layout: {
-        background: { type: ColorType.Solid, color: "#0f141b" },
-        textColor: "#8b949e",
+        background: { type: ColorType.Solid, color: c.background },
+        textColor: c.textColor,
         fontFamily: "Outfit, sans-serif",
         fontSize: 11,
       },
       grid: {
-        vertLines: { color: "#1f2937" },
-        horzLines: { color: "#1f2937" },
+        vertLines: { color: c.gridVert },
+        horzLines: { color: c.gridHorz },
       },
       rightPriceScale: {
-        borderColor: "#30363d",
+        borderColor: c.border,
         scaleMargins: { top: 0.1, bottom: 0.1 },
       },
       timeScale: {
-        borderColor: "#30363d",
+        borderColor: c.border,
         timeVisible: true,
         secondsVisible: false,
         rightOffset: 0,
@@ -127,8 +158,8 @@ export default function KlineChart({
         fixRightEdge: true,
       },
       crosshair: {
-        vertLine: { color: "#465fff", width: 1, style: 2 },
-        horzLine: { color: "#465fff", width: 1, style: 2 },
+        vertLine: { color: c.crosshair, width: 1, style: 2 },
+        horzLine: { color: c.crosshair, width: 1, style: 2 },
       },
     });
     chartRef.current = chart;
@@ -137,32 +168,32 @@ export default function KlineChart({
     let downSeries: ISeriesApi<"Line"> | ISeriesApi<"Candlestick">;
     if (mode === "line") {
       upSeries = chart.addLineSeries({
-        color: "#3fb950",
+        color: c.upLine,
         lineWidth: 2,
         priceFormat: { precision: 4, minMove: 0.0001 },
       });
       downSeries = chart.addLineSeries({
-        color: "#f85149",
+        color: c.downLine,
         lineWidth: 2,
         priceFormat: { precision: 4, minMove: 0.0001 },
       });
     } else {
       upSeries = chart.addCandlestickSeries({
-        upColor: "#3fb950",
-        downColor: "#0e4429",
-        borderUpColor: "#3fb950",
-        borderDownColor: "#0e4429",
-        wickUpColor: "#3fb950",
-        wickDownColor: "#3fb950",
+        upColor: c.upCandle,
+        downColor: c.downCandle,
+        borderUpColor: c.upCandleBorder,
+        borderDownColor: c.downCandleBorder,
+        wickUpColor: c.upCandleWick,
+        wickDownColor: c.downCandleWick,
         priceFormat: { precision: 4, minMove: 0.0001 },
       });
       downSeries = chart.addCandlestickSeries({
-        upColor: "#f85149",
-        downColor: "#5a1d1a",
-        borderUpColor: "#f85149",
-        borderDownColor: "#5a1d1a",
-        wickUpColor: "#f85149",
-        wickDownColor: "#f85149",
+        upColor: c.upCandle,
+        downColor: c.downCandle,
+        borderUpColor: c.upCandleBorder,
+        borderDownColor: c.downCandleBorder,
+        wickUpColor: c.upCandleWick,
+        wickDownColor: c.downCandleWick,
         priceFormat: { precision: 4, minMove: 0.0001 },
       });
     }
@@ -175,9 +206,10 @@ export default function KlineChart({
       seriesUpRef.current = null;
       seriesDownRef.current = null;
     };
-  }, [mode, height]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, height, theme]);
 
-  // 喂数据
+  // Feed data
   useEffect(() => {
     const upSeries = seriesUpRef.current;
     const downSeries = seriesDownRef.current;
@@ -215,14 +247,14 @@ export default function KlineChart({
           to: visibleToSec as UTCTimestamp,
         });
       } catch {
-        /* 范围超界时忽略 */
+        /* range out of bounds — ignore */
       }
     } else if (up.length + down.length > 0) {
       chart.timeScale().fitContent();
     }
   }, [up, down, mode, bucketSec, visibleFromSec, visibleToSec]);
 
-  // 自适应宽度
+  // Resize observer
   useEffect(() => {
     const container = containerRef.current;
     const chart = chartRef.current;

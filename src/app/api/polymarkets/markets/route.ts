@@ -24,19 +24,19 @@ export async function GET(req: Request) {
 
   if (assetParam && !ASSETS.includes(assetParam as Asset)) {
     return NextResponse.json(
-      { error: "invalid_asset", message: `asset 必须为 ${ASSETS.join("/")}` },
+      { error: "invalid_asset", message: `asset must be one of ${ASSETS.join("/")}` },
       { status: 400 },
     );
   }
   if (periodParam && !PERIODS.includes(periodParam as Period)) {
     return NextResponse.json(
-      { error: "invalid_period", message: `period 必须为 ${PERIODS.join("/")}` },
+      { error: "invalid_period", message: `period must be one of ${PERIODS.join("/")}` },
       { status: 400 },
     );
   }
   if (!assetParam || !periodParam) {
     return NextResponse.json(
-      { error: "missing_params", message: "需要 asset 和 period 参数" },
+      { error: "missing_params", message: "asset and period query params are required" },
       { status: 400 },
     );
   }

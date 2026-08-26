@@ -14,7 +14,6 @@ export interface AssetNavProps {
   currentAsset: Asset;
   currentPeriod: Period;
   onSelect: (asset: Asset, period: Period) => void;
-  /** 健康检查：数据源是否可用 */
   health?: { exists: boolean; dataDir: string } | null;
 }
 
@@ -43,114 +42,81 @@ export default function AssetNav({
   for (const s of stats) byAsset.set(s.asset.toLowerCase(), s);
 
   return (
-    <aside className="flex h-full w-64 flex-col border-r border-zinc-800 bg-zinc-950 text-zinc-200">
-      {/* Brand */}
-      <div className="flex items-center gap-3 px-5 py-5 border-b border-zinc-800">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 shadow-lg shadow-brand-500/20">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-5 w-5 text-white"
-          >
-            <path d="M3 17l6-6 4 4 8-8" />
-            <path d="M14 7h7v7" />
-          </svg>
-        </div>
-        <div>
-          <div className="text-sm font-semibold leading-tight">Polymarket</div>
-          <div className="text-[11px] text-zinc-500 leading-tight">Up/Down Monitor</div>
-        </div>
-      </div>
-
-      {/* Section title */}
-      <div className="px-5 pt-4 pb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
-        Assets
-      </div>
-
-      {/* Asset list */}
-      <nav className="flex-1 overflow-y-auto px-2 pb-4">
+    <div className="flex flex-col gap-0 rounded-xl border border-gray-200 bg-white dark:border-zinc-700 dark:bg-zinc-900 overflow-hidden mb-5">
+      {/* Asset pills */}
+      <div className="flex items-center gap-1 px-4 py-3 bg-gray-50 dark:bg-zinc-800/60 overflow-x-auto">
         {ASSETS.map((asset) => {
           const stat = byAsset.get(asset);
           const total = stat?.total ?? 0;
           const active = asset === currentAsset;
           return (
-            <div key={asset} className="mb-1">
-              <div
-                className={`group flex items-center gap-3 rounded-lg px-3 py-2 cursor-pointer transition ${
-                  active
-                    ? "bg-zinc-800/80 ring-1 ring-brand-500/30"
-                    : "hover:bg-zinc-900"
-                }`}
-                onClick={() => onSelect(asset, active ? currentPeriod : "5m")}
+            <button
+              key={asset}
+              onClick={() => onSelect(asset, active ? currentPeriod : "5m")}
+              className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition whitespace-nowrap shrink-0 ${
+                active
+                  ? "bg-white dark:bg-zinc-700 text-gray-900 dark:text-white shadow-sm ring-1 ring-gray-200 dark:ring-zinc-600"
+                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-white/60 dark:hover:bg-zinc-700/50"
+              }`}
+            >
+              <span
+                className={`flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br ${getGradient(asset)} text-white text-xs font-bold`}
               >
-                <span
-                  className={`flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br ${getGradient(asset)} text-white text-sm font-bold shadow`}
-                >
-                  {assetIcon(asset)}
-                </span>
-                <span className="flex-1 text-sm font-medium">{asset.toUpperCase()}</span>
-                <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-zinc-400">
-                  {total.toLocaleString()}
-                </span>
-              </div>
-
-              {/* Period sub-items */}
-              {active && (
-                <div className="ml-3 mt-1 mb-2 space-y-0.5 border-l border-zinc-800 pl-3">
-                  {PERIODS.map((period) => {
-                    const count = stat?.periods?.[period] ?? 0;
-                    const isActive = period === currentPeriod;
-                    return (
-                      <div
-                        key={period}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSelect(asset, period);
-                        }}
-                        className={`flex cursor-pointer items-center justify-between rounded-md px-2 py-1 text-[12px] transition ${
-                          isActive
-                            ? "bg-brand-500/15 text-brand-400"
-                            : "text-zinc-500 hover:bg-zinc-900 hover:text-zinc-200"
-                        }`}
-                      >
-                        <span className="flex items-center gap-2">
-                          <span className="inline-block h-1 w-1 rounded-full bg-current opacity-60" />
-                          {period.toUpperCase()}
-                        </span>
-                        <span className="text-[10px] text-zinc-600">{count.toLocaleString()}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+                {assetIcon(asset)}
+              </span>
+              <span className="font-semibold">{asset.toUpperCase()}</span>
+              <span className="text-xs text-gray-400 dark:text-gray-500">{total}</span>
+            </button>
           );
         })}
-      </nav>
 
-      {/* Status footer */}
-      <div className="border-t border-zinc-800 px-5 py-3">
-        <div className="flex items-center gap-2 text-[11px]">
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Data source status */}
+        <div className="flex items-center gap-2 shrink-0">
           <span
-            className={`inline-block h-2 w-2 rounded-full ${
-              health?.exists ? "bg-emerald-500 shadow shadow-emerald-500/40" : "bg-red-500"
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${
+              health?.exists
+                ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
+                : "bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400"
             }`}
-          />
-          <span className={health?.exists ? "text-emerald-400" : "text-red-400"}>
-            {health?.exists ? "Data source online" : "Data source offline"}
+          >
+            <span
+              className={`inline-block h-1.5 w-1.5 rounded-full ${
+                health?.exists ? "bg-emerald-500 animate-pulse" : "bg-red-500"
+              }`}
+            />
+            {health?.exists ? "Live" : "Offline"}
           </span>
         </div>
-        {health?.exists && (
-          <div className="mt-1 truncate font-mono text-[10px] text-zinc-600" title={health.dataDir}>
-            {health.dataDir}
-          </div>
-        )}
       </div>
-    </aside>
+
+      {/* Period tabs */}
+      <div className="flex items-center gap-1 px-4 py-2 border-t border-gray-100 dark:border-zinc-700">
+        <span className="mr-1 text-xs text-gray-400 dark:text-gray-500 font-medium">
+          {currentAsset.toUpperCase()}
+        </span>
+        {PERIODS.map((period) => {
+          const stat = byAsset.get(currentAsset);
+          const count = stat?.periods?.[period] ?? 0;
+          const isActive = period === currentPeriod;
+          return (
+            <button
+              key={period}
+              onClick={() => onSelect(currentAsset, period)}
+              className={`rounded-md px-3 py-1 text-xs font-semibold transition ${
+                isActive
+                  ? "bg-brand-500 text-white shadow-sm"
+                  : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-700"
+              }`}
+            >
+              {period.toUpperCase()}
+              <span className="ml-1.5 text-[10px] opacity-70">{count}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
