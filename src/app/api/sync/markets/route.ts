@@ -28,6 +28,24 @@ export async function POST(request: NextRequest) {
     }
 
     const db = new Database(marketsDbPath());
+    db.pragma("journal_mode = WAL");
+
+    // 确保表存在
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS markets (
+        slug TEXT PRIMARY KEY,
+        asset TEXT NOT NULL,
+        period TEXT NOT NULL,
+        start_epoch INTEGER NOT NULL,
+        up_token TEXT,
+        down_token TEXT,
+        end_epoch INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        volume REAL NOT NULL DEFAULT 0
+      );
+      CREATE INDEX IF NOT EXISTS idx_markets_asset_period ON markets(asset, period);
+      CREATE INDEX IF NOT EXISTS idx_markets_start_epoch ON markets(start_epoch);
+    `);
 
     const insert = db.prepare(`
       INSERT OR REPLACE INTO markets
