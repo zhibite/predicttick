@@ -74,39 +74,35 @@ export async function GET(request: NextRequest) {
       console.log(`[sync/state] markets.db not found at: ${marketsPath}`);
     }
 
-    // 并行探测 8 个资产 db 的状态（避免串行等待）
+    // 各资产 klines（先串行走，减少线程开销；db 打开本身有 WAL 开销）
     const assets = ["btc", "eth", "bnb", "sol", "doge", "xrp", "hype"] as const;
+    const t0k = Date.now();
 
-    await Promise.all(
-      assets.map(async (asset) => {
-        const files = listAssetDbFiles(asset);
-        if (files.length === 0) return;
+    for (const asset of assets) {
+      const files = listAssetDbFiles(asset);
+      if (files.length === 0) continue;
 
-        let maxTimeMs = 0;
-        let count = 0;
-        let anyOk = false;
-
-        await Promise.all(
-          files.map(async (file) => {
-            try {
-              const db = getReadonlyDb(file);
-              const row = db.prepare(
-                "SELECT COALESCE(MAX(time_ms), 0) as maxTimeMs, COUNT(*) as count FROM klines"
-              ).get() as { maxTimeMs: number; count: number };
-              maxTimeMs = Math.max(maxTimeMs, row.maxTimeMs);
-              count += row.count;
-              anyOk = true;
-            } catch (err) {
-              console.warn(`[sync/state] ${file} corrupted, skipping:`, String(err));
-            }
-          })
-        );
-
-        if (anyOk) {
-          state.klines[asset] = { maxTimeMs, count };
+      let maxTimeMs = 0;
+      let count = 0;
+      let anyOk = false;
+      for (const file of files) {
+        try {
+          const db = getReadonlyDb(file);
+          const row = db.prepare(
+            "SELECT COALESCE(MAX(time_ms), 0) as maxTimeMs, COUNT(*) as count FROM klines"
+          ).get() as { maxTimeMs: number; count: number };
+          maxTimeMs = Math.max(maxTimeMs, row.maxTimeMs);
+          count += row.count;
+          anyOk = true;
+        } catch (err) {
+          console.warn(`[sync/state] ${file} corrupted, skipping:`, String(err));
         }
-      })
-    );
+      }
+      if (anyOk) {
+        state.klines[asset] = { maxTimeMs, count };
+      }
+    }
+    console.log(`[sync/state] klines: total=${Date.now() - t0k}ms`);
 
     return NextResponse.json(state);
   } catch (err) {
