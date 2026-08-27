@@ -48,10 +48,28 @@ export async function GET(request: NextRequest) {
     if (fs.existsSync(marketsPath)) {
       try {
         const db = getReadonlyDb(marketsPath);
-        const row = db.prepare(
-          "SELECT COALESCE(MAX(start_epoch), 0) as maxStartEpoch, COUNT(*) as count FROM markets"
-        ).get() as { maxStartEpoch: number; count: number };
-        state.markets = { maxStartEpoch: row.maxStartEpoch, count: row.count };
+        // 取 max 单独走（不需要扫全表，如果有索引就用）
+        const maxRow = db.prepare(
+          "SELECT COALESCE(MAX(start_epoch), 0) as maxStartEpoch FROM markets"
+        ).get() as { maxStartEpoch: number };
+        // count 用 sqlite_stat 估算值（避免 COUNT(*) 全表扫描）
+        let count = 0;
+        try {
+          const stat = db.prepare(
+            "SELECT stat FROM sqlite_master WHERE name='markets' AND type='table'"
+          ).get() as { stat: string } | undefined;
+          if (stat?.stat) {
+            // stat 格式: "rows=363471 ..." 或类似，先尝试解析
+            const m = /rows=(\d+)/.exec(stat.stat);
+            if (m) count = parseInt(m[1], 10);
+          }
+        } catch { /* 忽略 */ }
+        // fallback：用 LIMIT 0 + 1 让 sqlite 至少走一次但很快
+        if (count === 0) {
+          const c = db.prepare("SELECT COUNT(*) as c FROM (SELECT 1 FROM markets LIMIT 1)").get() as { c: number };
+          count = c.c;
+        }
+        state.markets = { maxStartEpoch: maxRow.maxStartEpoch, count };
       } catch (err) {
         console.warn("[sync/state] markets.db corrupted, skipping:", String(err));
       }
