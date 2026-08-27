@@ -15,7 +15,9 @@ function getDb(filePath: string): Database.Database {
   let db = dbCache.get(filePath);
   if (!db) {
     db = new Database(filePath);
-    db.pragma("journal_mode = WAL");
+    // 幂等设置，只在首次有效
+    const jm = (db.pragma("journal_mode", { simple: true }) as string).trim();
+    if (jm !== "wal") db.pragma("journal_mode = WAL");
     db.pragma("synchronous = NORMAL");
     db.pragma("temp_store = MEMORY");
     db.pragma("cache_size = -32000");

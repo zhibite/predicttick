@@ -20,7 +20,8 @@ function getDb(filePath: string): Database.Database {
   let db = dbCache.get(filePath);
   if (!db) {
     db = new Database(filePath);
-    db.pragma("journal_mode = WAL");
+    const jm = (db.pragma("journal_mode", { simple: true }) as string).trim();
+    if (jm !== "wal") db.pragma("journal_mode = WAL");
     db.pragma("synchronous = NORMAL"); // 写性能显著提升
     db.pragma("temp_store = MEMORY");
     db.pragma("cache_size = -32000"); // 32MB cache
