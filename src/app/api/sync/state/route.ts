@@ -80,10 +80,11 @@ export async function GET(request: NextRequest) {
     const t0k = Date.now();
 
     // 1) 先收集所有 db 文件
-    const tasks: { asset: string; file: string }[] = [];
+    const tasks: { id: number; asset: string; file: string }[] = [];
+    let __id = 0;
     for (const asset of assets) {
       for (const file of listAssetDbFiles(asset)) {
-        tasks.push({ asset, file });
+        tasks.push({ id: __id++, asset, file });
       }
     }
 
@@ -108,11 +109,10 @@ export async function GET(request: NextRequest) {
 
     const CONCURRENCY = 4; // 最多同时打开 4 个 db（避免 IO 拥塞）
     const results: Array<{ id: number; ok: boolean; maxTimeMs: number; count: number; error?: string }> = [];
-    let nextId = 0;
     let active = 0;
 
     await new Promise<void>((resolveAll) => {
-      const queue = tasks.map((t) => ({ ...t, id: nextId++ }));
+      const queue = tasks.map((t) => t);
 
       const launchNext = () => {
         while (active < CONCURRENCY && queue.length > 0) {
