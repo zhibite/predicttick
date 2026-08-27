@@ -5,6 +5,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+import { Worker } from "node:worker_threads";
 import { NextRequest, NextResponse } from "next/server";
 import Database from "better-sqlite3";
 import { marketsDbPath, listAssetDbFiles } from "@/lib/db/path";
@@ -74,35 +75,98 @@ export async function GET(request: NextRequest) {
       console.log(`[sync/state] markets.db not found at: ${marketsPath}`);
     }
 
-    // 各资产 klines（先串行走，减少线程开销；db 打开本身有 WAL 开销）
+    // 各资产 klines 用 worker_threads 真正并行（better-sqlite3 同步调用会阻塞 event loop）
     const assets = ["btc", "eth", "bnb", "sol", "doge", "xrp", "hype"] as const;
     const t0k = Date.now();
 
+    // 1) 先收集所有 db 文件
+    const tasks: { asset: string; file: string }[] = [];
     for (const asset of assets) {
-      const files = listAssetDbFiles(asset);
-      if (files.length === 0) continue;
-
-      let maxTimeMs = 0;
-      let count = 0;
-      let anyOk = false;
-      for (const file of files) {
-        try {
-          const db = getReadonlyDb(file);
-          const row = db.prepare(
-            "SELECT COALESCE(MAX(time_ms), 0) as maxTimeMs, COUNT(*) as count FROM klines"
-          ).get() as { maxTimeMs: number; count: number };
-          maxTimeMs = Math.max(maxTimeMs, row.maxTimeMs);
-          count += row.count;
-          anyOk = true;
-        } catch (err) {
-          console.warn(`[sync/state] ${file} corrupted, skipping:`, String(err));
-        }
-      }
-      if (anyOk) {
-        state.klines[asset] = { maxTimeMs, count };
+      for (const file of listAssetDbFiles(asset)) {
+        tasks.push({ asset, file });
       }
     }
-    console.log(`[sync/state] klines: total=${Date.now() - t0k}ms`);
+
+    // 2) 在 worker 里并行跑 MAX+COUNT
+    const workerCode = `
+      const { parentPort } = require("worker_threads");
+      const Database = require("better-sqlite3");
+      parentPort.on("message", ({ id, file }) => {
+        try {
+          const db = new Database(file, { readonly: true });
+          db.pragma("cache_size = -8000"); // 小一点的 cache 即可（仅查 max/count）
+          const row = db.prepare(
+            "SELECT COALESCE(MAX(time_ms), 0) as maxTimeMs, COUNT(*) as count FROM klines"
+          ).get();
+          db.close();
+          parentPort.postMessage({ id, ok: true, maxTimeMs: row.maxTimeMs, count: row.count });
+        } catch (e) {
+          parentPort.postMessage({ id, ok: false, error: String(e) });
+        }
+      });
+    `;
+
+    const CONCURRENCY = 4; // 最多同时打开 4 个 db（避免 IO 拥塞）
+    const results: Array<{ id: number; ok: boolean; maxTimeMs: number; count: number; error?: string }> = [];
+    let nextId = 0;
+    let active = 0;
+
+    await new Promise<void>((resolveAll) => {
+      const queue = tasks.map((t) => ({ ...t, id: nextId++ }));
+
+      const launchNext = () => {
+        while (active < CONCURRENCY && queue.length > 0) {
+          const task = queue.shift()!;
+          active++;
+          const worker = new Worker(workerCode, { eval: true });
+          worker.on("message", (msg) => {
+            results.push(msg);
+            active--;
+            if (results.length === tasks.length) {
+              resolveAll();
+            } else {
+              launchNext();
+            }
+          });
+          worker.on("error", (err) => {
+            results.push({ id: task.id, ok: false, maxTimeMs: 0, count: 0, error: String(err) });
+            active--;
+            if (results.length === tasks.length) resolveAll();
+            else launchNext();
+          });
+          worker.postMessage({ id: task.id, file: task.file });
+        }
+      };
+
+      if (tasks.length === 0) resolveAll();
+      else launchNext();
+    });
+
+    // 3) 汇总（按 asset 分组）
+    const byAsset = new Map<string, { maxTimeMs: number; count: number; anyOk: boolean }>();
+    for (const r of results) {
+      const t = tasks.find((x) => x.id === r.id);
+      if (!t) continue;
+      const cur = byAsset.get(t.asset) ?? { maxTimeMs: 0, count: 0, anyOk: false };
+      if (r.ok) {
+        cur.maxTimeMs = Math.max(cur.maxTimeMs, r.maxTimeMs);
+        cur.count += r.count;
+        cur.anyOk = true;
+      } else {
+        console.warn(`[sync/state] ${t.file} corrupted: ${r.error}`);
+      }
+      byAsset.set(t.asset, cur);
+    }
+    for (const [asset, v] of byAsset) {
+      if (v.anyOk) state.klines[asset] = { maxTimeMs: v.maxTimeMs, count: v.count };
+    }
+
+    // 慢文件日志（>500ms 视为瓶颈）
+    const slow = results.filter((r) => r.ok).map((r) => {
+      const t = tasks.find((x) => x.id === r.id)!;
+      return { file: t.file.replace(/^.*\//, ""), count: r.count };
+    }).sort((a, b) => b.count - a.count).slice(0, 5);
+    console.log(`[sync/state] klines: ${tasks.length} files, total=${Date.now() - t0k}ms, top by rows:`, slow);
 
     return NextResponse.json(state);
   } catch (err) {
