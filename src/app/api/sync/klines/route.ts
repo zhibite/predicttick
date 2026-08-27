@@ -2,10 +2,33 @@
  * Kline sync API - 批量写入/更新 klines
  * body: { asset: string, klines: KlineInput[] }
  */
+// Sync API 必须用 Node.js runtime（better-sqlite3 是 native binding）
+export const runtime = "nodejs";
+// 不缓存结果，每次都是实时数据
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import Database from "better-sqlite3";
 import { listAssetDbFiles } from "@/lib/db/path";
 import path from "node:path";
+
+// 复用 db 句柄，避免每次请求 open/close 文件
+// key = 绝对路径
+const dbCache = new Map<string, Database.Database>();
+
+function getDb(filePath: string): Database.Database {
+  let db = dbCache.get(filePath);
+  if (!db) {
+    db = new Database(filePath);
+    db.pragma("journal_mode = WAL");
+    db.pragma("synchronous = NORMAL"); // 写性能显著提升
+    db.pragma("temp_store = MEMORY");
+    db.pragma("cache_size = -32000"); // 32MB cache
+    db.pragma("wal_autocheckpoint = 1000"); // 每 1000 页自动 checkpoint
+    dbCache.set(filePath, db);
+  }
+  return db;
+}
 
 interface KlineInput {
   token_id: string;
@@ -40,7 +63,7 @@ export async function POST(request: NextRequest) {
 
     // 使用最新的文件
     const targetDb = files.sort().at(-1)!;
-    const db = new Database(targetDb);
+    const db = getDb(targetDb);
 
     // 探测表结构，决定要绑哪些列
     const cols = db.prepare("PRAGMA table_info(klines)").all() as { name: string }[];
@@ -78,7 +101,7 @@ export async function POST(request: NextRequest) {
     });
 
     insertMany(klines);
-    db.close();
+    // 不关闭 db，复用句柄
 
     return NextResponse.json({ inserted: klines.length, asset, file: path.basename(targetDb) });
   } catch (err) {

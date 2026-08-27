@@ -2,10 +2,26 @@
  * Sync state API - 返回服务端当前同步进度
  * 客户端据此判断从哪个时间点开始同步
  */
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import Database from "better-sqlite3";
 import { marketsDbPath, listAssetDbFiles } from "@/lib/db/path";
 import fs from "node:fs";
+
+const roDbCache = new Map<string, Database.Database>();
+
+function getReadonlyDb(filePath: string): Database.Database {
+  let db = roDbCache.get(filePath);
+  if (!db) {
+    db = new Database(filePath, { readonly: true });
+    db.pragma("cache_size = -32000");
+    db.pragma("temp_store = MEMORY");
+    roDbCache.set(filePath, db);
+  }
+  return db;
+}
 
 interface SyncState {
   timestamp: number;
@@ -31,12 +47,11 @@ export async function GET(request: NextRequest) {
     const marketsPath = marketsDbPath();
     if (fs.existsSync(marketsPath)) {
       try {
-        const db = new Database(marketsPath, { readonly: true });
+        const db = getReadonlyDb(marketsPath);
         const row = db.prepare(
           "SELECT COALESCE(MAX(start_epoch), 0) as maxStartEpoch, COUNT(*) as count FROM markets"
         ).get() as { maxStartEpoch: number; count: number };
         state.markets = { maxStartEpoch: row.maxStartEpoch, count: row.count };
-        db.close();
       } catch (err) {
         console.warn("[sync/state] markets.db corrupted, skipping:", String(err));
       }
@@ -53,14 +68,13 @@ export async function GET(request: NextRequest) {
       let anyOk = false;
       for (const file of files) {
         try {
-          const db = new Database(file, { readonly: true });
+          const db = getReadonlyDb(file);
           const row = db.prepare(
             "SELECT COALESCE(MAX(time_ms), 0) as maxTimeMs, COUNT(*) as count FROM klines"
           ).get() as { maxTimeMs: number; count: number };
           maxTimeMs = Math.max(maxTimeMs, row.maxTimeMs);
           count += row.count;
           anyOk = true;
-          db.close();
         } catch (err) {
           console.warn(`[sync/state] ${file} corrupted, skipping:`, String(err));
         }

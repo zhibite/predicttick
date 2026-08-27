@@ -2,9 +2,28 @@
  * Markets sync API - 批量写入/更新 markets
  * 使用 INSERT OR REPLACE 实现 upsert
  */
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import Database from "better-sqlite3";
 import { marketsDbPath } from "@/lib/db/path";
+
+const dbCache = new Map<string, Database.Database>();
+
+function getDb(filePath: string): Database.Database {
+  let db = dbCache.get(filePath);
+  if (!db) {
+    db = new Database(filePath);
+    db.pragma("journal_mode = WAL");
+    db.pragma("synchronous = NORMAL");
+    db.pragma("temp_store = MEMORY");
+    db.pragma("cache_size = -32000");
+    db.pragma("wal_autocheckpoint = 1000");
+    dbCache.set(filePath, db);
+  }
+  return db;
+}
 
 interface MarketInput {
   slug: string;
@@ -27,8 +46,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ inserted: 0 });
     }
 
-    const db = new Database(marketsDbPath());
-    db.pragma("journal_mode = WAL");
+    const db = getDb(marketsDbPath());
 
     // 确保表存在
     db.exec(`
@@ -71,7 +89,7 @@ export async function POST(request: NextRequest) {
     });
 
     insertMany(markets);
-    db.close();
+    // 复用 db 句柄不关
 
     return NextResponse.json({ inserted: markets.length });
   } catch (err) {
