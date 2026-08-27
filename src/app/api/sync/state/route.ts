@@ -12,6 +12,7 @@ import { marketsDbPath, listAssetDbFiles } from "@/lib/db/path";
 import fs from "node:fs";
 
 const roDbCache = new Map<string, Database.Database>();
+const stateCache: { ts: number; data: SyncState | null } = { ts: 0, data: null };
 
 function getReadonlyDb(filePath: string): Database.Database {
   let db = roDbCache.get(filePath);
@@ -38,6 +39,15 @@ interface SyncState {
 
 export async function GET(request: NextRequest) {
   try {
+    // 30s 内存缓存（多个客户端/页面反复请求，避免每次都重跑 MAX/COUNT）
+    const now = Date.now();
+    const cached = stateCache.data;
+    if (cached && now - stateCache.ts < 30_000) {
+      return NextResponse.json(cached, {
+        headers: { "cache-control": "public, max-age=10, stale-while-revalidate=30" },
+      });
+    }
+
     const t0 = Date.now();
     const state: SyncState = {
       timestamp: Date.now(),
@@ -168,7 +178,12 @@ export async function GET(request: NextRequest) {
     }).sort((a, b) => b.count - a.count).slice(0, 5);
     console.log(`[sync/state] klines: ${tasks.length} files, total=${Date.now() - t0k}ms, top by rows:`, slow);
 
-    return NextResponse.json(state);
+    stateCache.data = state;
+    stateCache.ts = Date.now();
+
+    return NextResponse.json(state, {
+      headers: { "cache-control": "public, max-age=10, stale-while-revalidate=30" },
+    });
   } catch (err) {
     console.error("[sync/state]", err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
