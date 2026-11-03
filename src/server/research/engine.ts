@@ -449,20 +449,26 @@ async function computeSummary(
   if (economicPnl > 0 && makerRebate / economicPnl >= 0.2) {
     tags.push("rebate-dependent");
   }
-  const bestWindow = [...byWindow.entries()]
-    .filter(([, stats]) => stats.entryN > 0 && stats.endN > 0)
-    .sort(
-      (a, b) =>
-        (b[1].endSum / b[1].endN) - (a[1].endSum / a[1].endN),
-    )[0];
-  if (bestWindow) tags.push(`best-window:${bestWindow[0]}`);
-  const bestPrice = [...byPrice.entries()]
-    .filter(([, stats]) => stats.endN > 0)
-    .sort(
-      (a, b) =>
-        (b[1].endSum / b[1].endN) - (a[1].endSum / a[1].endN),
-    )[0];
-  if (bestPrice) tags.push(`best-price:${bestPrice[0]}`);
+  // Only advertise "best window / price" when the local 1s samples cover a
+  // large share of the fetched fills; otherwise the ranking is dominated by
+  // missing marks from periods before the collector existed.
+  const coverageRatio = rows > 0 ? midCovered / rows : 0;
+  if (coverageRatio >= 0.8) {
+    const bestWindow = [...byWindow.entries()]
+      .filter(([, stats]) => stats.endN >= 100)
+      .sort(
+        (a, b) =>
+          (b[1].endSum / b[1].endN) - (a[1].endSum / a[1].endN),
+      )[0];
+    if (bestWindow) tags.push(`best-window:${bestWindow[0]}`);
+    const bestPrice = [...byPrice.entries()]
+      .filter(([, stats]) => stats.endN >= 100)
+      .sort(
+        (a, b) =>
+          (b[1].endSum / b[1].endN) - (a[1].endSum / a[1].endN),
+      )[0];
+    if (bestPrice) tags.push(`best-price:${bestPrice[0]}`);
+  }
 
   const sampleSpanDays =
     firstAt != null && lastAt != null
