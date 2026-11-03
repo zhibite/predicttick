@@ -22,6 +22,12 @@ const links = [
       "Run admin-only simulated strategies against live Up/Down books, with full trade, position and settlement history.",
   },
   {
+    href: "/admin/research",
+    title: "Trader research",
+    description:
+      "Fetch a wallet's public fills, join them to the 1-second book and analyze entry edge, markouts, pair cost and timing.",
+  },
+  {
     href: "/admin/payments",
     title: "Payment review",
     description:

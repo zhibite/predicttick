@@ -3,6 +3,9 @@
 纸盘模块用于验证 Polymarket Up/Down 短周期策略。它**只做模拟成交**，不使用私钥、
 不签名、不向 CLOB 下真实订单；所有页面和 API 都要求管理员会话。
 
+每笔纸盘成交都会记录 entry edge 和 +1s/+10s/+60s/结算 markout；
+目标账户的全量归因 ETL 见 [trader-research.md](trader-research.md)。
+
 ## 页面与 API
 
 | 路径 | 说明 |

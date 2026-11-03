@@ -430,6 +430,84 @@ function mapActivity(row: JsonRecord): LeaderboardActivity | null {
   };
 }
 
+export interface TradeActivityPage {
+  rows: LeaderboardActivity[];
+  nextCursor: string | null;
+}
+
+/** One cursor page of a user's TRADE activity, for streaming research ETLs. */
+export async function fetchTradeActivityPage(
+  address: string,
+  cursor: string | null,
+  limit = 1_000,
+): Promise<TradeActivityPage> {
+  const url = new URL(`${DATA_API_BASE}/activity`);
+  url.searchParams.set("user", address);
+  url.searchParams.set("type", "TRADE");
+  url.searchParams.set("sort_by", "TIMESTAMP");
+  url.searchParams.set("sort_direction", "DESC");
+  url.searchParams.set("limit", String(Math.min(MAX_PAGE, limit)));
+  if (cursor) url.searchParams.set("cursor", cursor);
+
+  const payload = await requestJson(url.toString());
+  const page = isRecord(payload) ? asArray(payload.data) : asArray(payload);
+  const rows: LeaderboardActivity[] = [];
+  for (const row of page) {
+    const mapped = mapActivity(row);
+    if (mapped) rows.push(mapped);
+  }
+  const nextCursor =
+    isRecord(payload) && isRecord(payload.pagination)
+      ? text(payload.pagination, "next_cursor")
+      : null;
+  return { rows, nextCursor };
+}
+
+export interface ActivityTypeRow {
+  type: string;
+  timestamp: number;
+  size: number;
+  usdcSize: number;
+  title: string | null;
+  outcome: string | null;
+  side: string | null;
+  conditionId: string | null;
+}
+
+/** Recent non-trade activity, used for redemption / rebate research. */
+export async function fetchActivityByTypes(
+  address: string,
+  types: string[],
+  limit = 1_000,
+): Promise<ActivityTypeRow[]> {
+  const url = new URL(`${DATA_API_BASE}/activity`);
+  url.searchParams.set("user", address);
+  url.searchParams.set("type", types.join(","));
+  url.searchParams.set("sort_by", "TIMESTAMP");
+  url.searchParams.set("sort_direction", "DESC");
+  url.searchParams.set("limit", String(Math.min(MAX_PAGE, limit)));
+
+  const payload = await requestJson(url.toString());
+  const page = isRecord(payload) ? asArray(payload.data) : asArray(payload);
+  const rows: ActivityTypeRow[] = [];
+  for (const row of page) {
+    const type = text(row, "type")?.toUpperCase();
+    const timestamp = unixSeconds(row.timestamp);
+    if (!type || !timestamp) continue;
+    rows.push({
+      type,
+      timestamp,
+      size: numberValue(row, ["size"]),
+      usdcSize: numberValue(row, ["usdc_size", "usdcSize"]),
+      title: text(row, "title"),
+      outcome: text(row, "outcome"),
+      side: text(row, "side"),
+      conditionId: text(row, "condition_id", "conditionId"),
+    });
+  }
+  return rows;
+}
+
 export async function fetchTrades(
   address: string,
 ): Promise<LeaderboardActivity[]> {

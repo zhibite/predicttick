@@ -74,6 +74,7 @@ const adminNavItems: NavItem[] = [
     subItems: [
       { name: "Leaderboard addresses", path: "/admin/leaderboard" },
       { name: "Paper trading", path: "/admin/paper" },
+      { name: "Trader research", path: "/admin/research" },
       { name: "Payment review", path: "/admin/payments" },
       { name: "Payment settings", path: "/admin/settings/payments" },
       { name: "System status", path: "/admin/system" },

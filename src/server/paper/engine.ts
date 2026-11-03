@@ -1,4 +1,5 @@
 import { getDb } from "../db";
+import { updatePaperFillMarkouts } from "./markout";
 import {
   getLastPaperEntryAt,
   getOpenPaperPositions,
@@ -313,6 +314,8 @@ function tickPairLock(
     fee: upFee,
     reason: "pair_lock",
     signal,
+    midAtFill: sample.up_mid,
+    marketEndAt: market.end_epoch,
     now,
   });
   recordPaperBuy({
@@ -327,6 +330,8 @@ function tickPairLock(
     fee: downFee,
     reason: "pair_lock",
     signal,
+    midAtFill: sample.down_mid,
+    marketEndAt: market.end_epoch,
     now,
   });
   return 2;
@@ -433,6 +438,8 @@ function tickMidMaker(
       fee,
       reason: "mid_maker",
       signal,
+      midAtFill: mid,
+      marketEndAt: market.end_epoch,
       now,
     });
 
@@ -477,6 +484,12 @@ function tickStrategy(
 }
 
 export function tickPaperEngine(): PaperTickResult {
+  try {
+    updatePaperFillMarkouts();
+  } catch (error) {
+    console.error("[paper] markout update failed", error);
+  }
+
   // Paused strategies still need to settle and mark existing positions.
   const strategies = listPaperStrategies().filter(
     (strategy) => strategy.active === 1 || strategy.open_positions > 0,

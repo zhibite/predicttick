@@ -67,6 +67,7 @@ POLY_LEADERBOARD_MAX_TRADES=1000
 POLY_LEADERBOARD_MAX_CLOSED=500
 POLY_PAPER_ENGINE=1
 POLY_PAPER_TICK_SECONDS=5
+POLY_RESEARCH_ENGINE=1
 POLY_EXPORT_WORKER=1
 # POLY_EXPORT_DIR=/home/ubuntu/polyklines/data/exports
 POLY_API_CORS_ORIGINS=*
@@ -139,7 +140,9 @@ market_stats(slug PK, sample_count, first_ts, last_ts,
 | `/leaderboard/[address]` | 单个交易者的 PnL、持仓与行为分析 |
 | `/admin/leaderboard` | 管理员添加/同步/隐藏排行榜地址 |
 | `/admin/paper` | 管理员纸盘策略列表与创建 |
-| `/admin/paper/[id]` | 纸盘权益、持仓、成交与结算记录 |
+| `/admin/paper/[id]` | 纸盘权益、持仓、成交、逐笔 markout 与结算记录 |
+| `/admin/research` | 管理员目标账户归因 ETL |
+| `/admin/research/[id]` | 归因汇总、markout、配对结构和逐笔明细 |
 | `/admin/payments` | 管理员人工审核发票 |
 | `/admin/settings/payments` | 管理员配置收款地址/合约 |
 | `/admin/system` | 管理员查看 collector/jobs/队列/磁盘状态 |
@@ -162,7 +165,8 @@ market_stats(slug PK, sample_count, first_ts, last_ts,
 [backtest.md](backtest.md)。独立 jobs、监控、备份和安全 smoke test 见
 [operations.md](operations.md)。交易者排行榜、数据来源、指标口径和后台地址管理见
 [leaderboard.md](leaderboard.md)。纸盘交易、成交记录和目标账户策略归因见
-[paper-trading.md](paper-trading.md)。
+[paper-trading.md](paper-trading.md)；逐笔 markout 和归因 ETL 见
+[trader-research.md](trader-research.md)。
 
 ## 本地开发
 

@@ -21,6 +21,11 @@ export async function register() {
     startPaperEngine();
   }
 
+  if (process.env.POLY_RESEARCH_ENGINE !== "0") {
+    const { startResearchWorker } = await import("./server/research/engine");
+    startResearchWorker();
+  }
+
   // Production runs export/backtest jobs in the separate polyklines-jobs
   // service. Set POLY_INLINE_WORKERS=1 only for local dev or a single-process
   // deployment without the jobs service.

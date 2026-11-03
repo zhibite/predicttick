@@ -216,6 +216,29 @@ function mapTrade(row: Record<string, unknown>): PaperTradeRow {
     signal_json:
       typeof row.signal_json === "string" ? row.signal_json : null,
     created_at: Number(row.created_at ?? 0),
+    mid_at_fill:
+      row.mid_at_fill == null ? null : Number(row.mid_at_fill),
+    mid_1s: row.mid_1s == null ? null : Number(row.mid_1s),
+    mid_10s: row.mid_10s == null ? null : Number(row.mid_10s),
+    mid_60s: row.mid_60s == null ? null : Number(row.mid_60s),
+    mid_end: row.mid_end == null ? null : Number(row.mid_end),
+    entry_edge:
+      row.entry_edge == null ? null : Number(row.entry_edge),
+    markout_1s:
+      row.markout_1s == null ? null : Number(row.markout_1s),
+    markout_10s:
+      row.markout_10s == null ? null : Number(row.markout_10s),
+    markout_60s:
+      row.markout_60s == null ? null : Number(row.markout_60s),
+    markout_end:
+      row.markout_end == null ? null : Number(row.markout_end),
+    market_end_at:
+      row.market_end_at == null ? null : Number(row.market_end_at),
+    markout_status: String(row.markout_status ?? "PENDING"),
+    markout_updated_at:
+      row.markout_updated_at == null
+        ? null
+        : Number(row.markout_updated_at),
   };
 }
 
@@ -621,19 +644,24 @@ export function recordPaperBuy(input: {
   fee: number;
   reason: string;
   signal: unknown;
+  midAtFill: number | null;
+  marketEndAt: number | null;
   now: number;
 }): void {
   const db = getAppDb();
   const notional = input.price * input.shares;
   const tradeId = `ptr_${randomBytes(12).toString("hex")}`;
+  const entryEdge =
+    input.midAtFill == null ? null : input.midAtFill - input.price;
 
   db.exec("BEGIN IMMEDIATE");
   try {
     db.prepare(
       `INSERT INTO paper_trades
          (id, strategy_id, slug, asset, period, title, outcome, side,
-          price, shares, notional, fee, reason, signal_json, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'BUY', ?, ?, ?, ?, ?, ?, ?)`,
+          price, shares, notional, fee, reason, signal_json, created_at,
+          mid_at_fill, entry_edge, market_end_at, markout_status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'BUY', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')`,
     ).run(
       tradeId,
       input.strategyId,
@@ -649,6 +677,9 @@ export function recordPaperBuy(input: {
       input.reason,
       JSON.stringify(input.signal),
       input.now,
+      input.midAtFill,
+      entryEdge,
+      input.marketEndAt,
     );
 
     const existing = db

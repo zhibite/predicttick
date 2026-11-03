@@ -37,6 +37,15 @@ export function formatPercentPoints(
   return `${value.toFixed(digits)}%`;
 }
 
+/** Price-point values (0.0057) rendered as cents (0.57¢). */
+export function formatPricePoints(
+  value: number | null | undefined,
+  digits = 2,
+): string {
+  if (value == null || !Number.isFinite(value)) return "—";
+  return `${(value * 100).toFixed(digits)}¢`;
+}
+
 export function shortAddress(address: string): string {
   if (address.length <= 12) return address;
   return `${address.slice(0, 6)}…${address.slice(-4)}`;

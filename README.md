@@ -12,7 +12,9 @@
 > The manually curated Polymarket trader leaderboard and its admin address
 > manager are in [docs/leaderboard.md](docs/leaderboard.md). The admin-only
 > paper trading engine, trade ledger and the tracked trader strategy analysis
-> are in [docs/paper-trading.md](docs/paper-trading.md).
+> are in [docs/paper-trading.md](docs/paper-trading.md). The per-fill markout
+> and target-wallet attribution ETL are in
+> [docs/trader-research.md](docs/trader-research.md).
 > The original template documentation follows below.
 
 TailAdmin is a free and open-source admin dashboard template built on **Next.js and Tailwind CSS** providing developers with everything they need to create a feature-rich and data-driven: back-end, dashboard, or admin panel solution for any sort of web project.

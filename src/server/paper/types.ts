@@ -95,6 +95,19 @@ export interface PaperTradeRow {
   reason: string | null;
   signal_json: string | null;
   created_at: number;
+  mid_at_fill: number | null;
+  mid_1s: number | null;
+  mid_10s: number | null;
+  mid_60s: number | null;
+  mid_end: number | null;
+  entry_edge: number | null;
+  markout_1s: number | null;
+  markout_10s: number | null;
+  markout_60s: number | null;
+  markout_end: number | null;
+  market_end_at: number | null;
+  markout_status: string;
+  markout_updated_at: number | null;
 }
 
 export interface PaperSettlementRow {

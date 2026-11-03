@@ -18,6 +18,81 @@ export const APP_DB_PATH =
 
 const MIGRATIONS: Migration[] = [
   {
+    version: 9,
+    name: "fill markouts and trader research",
+    sql: `
+      ALTER TABLE paper_trades ADD COLUMN mid_at_fill REAL;
+      ALTER TABLE paper_trades ADD COLUMN mid_1s REAL;
+      ALTER TABLE paper_trades ADD COLUMN mid_10s REAL;
+      ALTER TABLE paper_trades ADD COLUMN mid_60s REAL;
+      ALTER TABLE paper_trades ADD COLUMN mid_end REAL;
+      ALTER TABLE paper_trades ADD COLUMN entry_edge REAL;
+      ALTER TABLE paper_trades ADD COLUMN markout_1s REAL;
+      ALTER TABLE paper_trades ADD COLUMN markout_10s REAL;
+      ALTER TABLE paper_trades ADD COLUMN markout_60s REAL;
+      ALTER TABLE paper_trades ADD COLUMN markout_end REAL;
+      ALTER TABLE paper_trades ADD COLUMN market_end_at INTEGER;
+      ALTER TABLE paper_trades ADD COLUMN markout_status TEXT NOT NULL DEFAULT 'PENDING';
+      ALTER TABLE paper_trades ADD COLUMN markout_updated_at INTEGER;
+      CREATE INDEX IF NOT EXISTS idx_paper_trades_markout
+        ON paper_trades(markout_status, created_at);
+
+      CREATE TABLE IF NOT EXISTS trader_research_runs (
+        id TEXT PRIMARY KEY,
+        address TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'QUEUED',
+        max_trades INTEGER NOT NULL DEFAULT 20000,
+        created_by TEXT,
+        created_at INTEGER NOT NULL,
+        started_at INTEGER,
+        finished_at INTEGER,
+        progress_trades INTEGER NOT NULL DEFAULT 0,
+        enriched_trades INTEGER NOT NULL DEFAULT 0,
+        total_expected INTEGER,
+        truncated INTEGER NOT NULL DEFAULT 0,
+        error TEXT,
+        summary_json TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_research_runs_status
+        ON trader_research_runs(status, created_at);
+
+      CREATE TABLE IF NOT EXISTS trader_research_trades (
+        run_id TEXT NOT NULL,
+        id TEXT NOT NULL,
+        slug TEXT NOT NULL,
+        title TEXT,
+        condition_id TEXT,
+        outcome TEXT,
+        side TEXT,
+        price REAL NOT NULL DEFAULT 0,
+        size REAL NOT NULL DEFAULT 0,
+        usdc_size REAL NOT NULL DEFAULT 0,
+        trade_ts INTEGER NOT NULL,
+        market_start INTEGER,
+        market_end INTEGER,
+        resolved TEXT,
+        elapsed INTEGER,
+        mid_at_fill REAL,
+        mid_1s REAL,
+        mid_10s REAL,
+        mid_60s REAL,
+        mid_end REAL,
+        entry_edge REAL,
+        markout_1s REAL,
+        markout_10s REAL,
+        markout_60s REAL,
+        markout_end REAL,
+        PRIMARY KEY (run_id, id)
+      ) WITHOUT ROWID;
+      CREATE INDEX IF NOT EXISTS idx_research_trades_ts
+        ON trader_research_trades(run_id, trade_ts DESC);
+      CREATE INDEX IF NOT EXISTS idx_research_trades_slug
+        ON trader_research_trades(run_id, slug);
+      CREATE INDEX IF NOT EXISTS idx_research_trades_market
+        ON trader_research_trades(run_id, condition_id);
+    `,
+  },
+  {
     version: 8,
     name: "paper trading",
     sql: `

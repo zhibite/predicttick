@@ -8,6 +8,7 @@ import PaperEquityChart from "@/components/paper/PaperEquityChart";
 import {
   formatEpochUtc,
   formatPercentPoints,
+  formatPricePoints,
   formatSignedUsd,
   formatUsd,
   pnlTextClass,
@@ -45,6 +46,69 @@ function signalSummary(trade: PaperTradeRow): string {
   } catch {
     return "—";
   }
+}
+
+function summarizeMarkout(values: Array<number | null>): {
+  average: number | null;
+  count: number;
+  positiveShare: number | null;
+} {
+  const valid = values.filter(
+    (value): value is number => value != null && Number.isFinite(value),
+  );
+  if (valid.length === 0) {
+    return { average: null, count: 0, positiveShare: null };
+  }
+  return {
+    average: valid.reduce((sum, value) => sum + value, 0) / valid.length,
+    count: valid.length,
+    positiveShare:
+      (valid.filter((value) => value > 0).length / valid.length) * 100,
+  };
+}
+
+function MarkoutMetric({
+  label,
+  values,
+}: {
+  label: string;
+  values: Array<number | null>;
+}) {
+  const summary = summarizeMarkout(values);
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+      <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+      <p
+        className={`mt-1 text-lg font-semibold tabular-nums ${pnlTextClass(
+          summary.average,
+        )}`}
+      >
+        {formatPricePoints(summary.average)}
+      </p>
+      <p className="mt-1 text-[11px] text-gray-400">
+        {summary.count} fills
+        {summary.positiveShare == null
+          ? ""
+          : ` · ${formatPercentPoints(summary.positiveShare, 0)} positive`}
+      </p>
+    </div>
+  );
+}
+
+function MarkoutBadge({ status }: { status: string }) {
+  const style =
+    status === "COMPLETE"
+      ? "bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-400"
+      : status === "PARTIAL"
+        ? "bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-400"
+        : "bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-gray-400";
+  return (
+    <span
+      className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${style}`}
+    >
+      {status.toLowerCase()}
+    </span>
+  );
 }
 
 function StatusBadge({ active }: { active: boolean }) {
@@ -384,6 +448,60 @@ export default function PaperStrategyDetailView({
       </section>
 
       <section className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h3 className="text-sm font-medium text-gray-800 dark:text-white/90">
+            Execution quality / markout
+          </h3>
+          <p className="text-xs text-gray-400">
+            Entry edge vs mid, then mid drift at +1s / +10s / +60s / settlement
+          </p>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+          <MarkoutMetric
+            label="Entry edge"
+            values={detail.trades.map((trade) => trade.entry_edge)}
+          />
+          <MarkoutMetric
+            label="Markout +1s"
+            values={detail.trades.map((trade) => trade.markout_1s)}
+          />
+          <MarkoutMetric
+            label="Markout +10s"
+            values={detail.trades.map((trade) => trade.markout_10s)}
+          />
+          <MarkoutMetric
+            label="Markout +60s"
+            values={detail.trades.map((trade) => trade.markout_60s)}
+          />
+          <MarkoutMetric
+            label="Markout to settlement"
+            values={detail.trades.map((trade) => trade.markout_end)}
+          />
+          <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Completed markouts
+            </p>
+            <p className="mt-1 text-lg font-semibold tabular-nums text-gray-800 dark:text-white/90">
+              {
+                detail.trades.filter(
+                  (trade) => trade.markout_status === "COMPLETE",
+                ).length
+              }
+            </p>
+            <p className="mt-1 text-[11px] text-gray-400">
+              {detail.trades.length} fills in this view
+            </p>
+          </div>
+        </div>
+        <p className="mt-3 text-xs text-gray-400">
+          Entry edge = mid at fill − fill price. Markouts = later mid − mid at
+          fill. The paper engine fills them in the background; values stay
+          pending until the corresponding sample exists. Settlement markout is
+          capped at market end, not redemption.
+        </p>
+      </section>
+
+      <section className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
         <h3 className="text-sm font-medium text-gray-800 dark:text-white/90">
           Config
         </h3>
@@ -499,7 +617,7 @@ export default function PaperStrategyDetailView({
           </p>
         ) : (
           <div className="mt-4 overflow-x-auto">
-            <table className="min-w-[1100px] w-full text-sm">
+            <table className="min-w-[1500px] w-full text-sm">
               <thead className="text-xs uppercase tracking-wide text-gray-400">
                 <tr>
                   <th className="py-2 text-left font-medium">Time</th>
@@ -509,6 +627,12 @@ export default function PaperStrategyDetailView({
                   <th className="px-3 py-2 text-right font-medium">Shares</th>
                   <th className="px-3 py-2 text-right font-medium">Notional</th>
                   <th className="px-3 py-2 text-right font-medium">Fee</th>
+                  <th className="px-3 py-2 text-right font-medium">Entry edge</th>
+                  <th className="px-3 py-2 text-right font-medium">MO +1s</th>
+                  <th className="px-3 py-2 text-right font-medium">MO +10s</th>
+                  <th className="px-3 py-2 text-right font-medium">MO +60s</th>
+                  <th className="px-3 py-2 text-right font-medium">MO end</th>
+                  <th className="px-3 py-2 text-left font-medium">MO status</th>
                   <th className="px-3 py-2 text-left font-medium">Reason</th>
                   <th className="px-3 py-2 text-left font-medium">Signal</th>
                 </tr>
@@ -541,6 +665,34 @@ export default function PaperStrategyDetailView({
                     </td>
                     <td className="px-3 py-3 text-right tabular-nums">
                       {formatSignedUsd(trade.fee)}
+                    </td>
+                    <td
+                      className={`px-3 py-3 text-right tabular-nums ${pnlTextClass(trade.entry_edge)}`}
+                    >
+                      {formatPricePoints(trade.entry_edge)}
+                    </td>
+                    <td
+                      className={`px-3 py-3 text-right tabular-nums ${pnlTextClass(trade.markout_1s)}`}
+                    >
+                      {formatPricePoints(trade.markout_1s)}
+                    </td>
+                    <td
+                      className={`px-3 py-3 text-right tabular-nums ${pnlTextClass(trade.markout_10s)}`}
+                    >
+                      {formatPricePoints(trade.markout_10s)}
+                    </td>
+                    <td
+                      className={`px-3 py-3 text-right tabular-nums ${pnlTextClass(trade.markout_60s)}`}
+                    >
+                      {formatPricePoints(trade.markout_60s)}
+                    </td>
+                    <td
+                      className={`px-3 py-3 text-right tabular-nums ${pnlTextClass(trade.markout_end)}`}
+                    >
+                      {formatPricePoints(trade.markout_end)}
+                    </td>
+                    <td className="px-3 py-3">
+                      <MarkoutBadge status={trade.markout_status} />
                     </td>
                     <td className="px-3 py-3 text-xs text-gray-500">
                       {trade.reason ?? "—"}
