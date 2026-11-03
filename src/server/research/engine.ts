@@ -186,7 +186,7 @@ function enqueuePage(
       id: row.id,
       slug: row.slug,
       condition_id: row.conditionId,
-      outcome: row.outcome,
+      outcome: row.outcome ? row.outcome.toUpperCase() : null,
       side: row.side,
       price: row.price,
       size: row.size,
@@ -351,9 +351,9 @@ async function computeSummary(
       addSample(ps, trade);
       byPrice.set(p, ps);
 
-      const o = trade.outcome === "UP" || trade.outcome === "DOWN"
-        ? trade.outcome
-        : "OTHER";
+      const outcome = (trade.outcome ?? "").toUpperCase();
+      const o =
+        outcome === "UP" || outcome === "DOWN" ? outcome : "OTHER";
       const os = byOutcome.get(o) ?? newAccumulator();
       addSample(os, trade);
       byOutcome.set(o, os);
@@ -376,7 +376,7 @@ async function computeSummary(
           downCost: 0,
           volume: 0,
         };
-        if (trade.outcome === "DOWN") {
+        if (outcome === "DOWN") {
           market.downShares += trade.size;
           market.downCost += trade.usdc_size;
         } else {
@@ -596,41 +596,32 @@ export async function processResearchRun(runId: string): Promise<void> {
 
       for (const trade of trades) {
         const sign = trade.side === "SELL" ? -1 : 1;
+        const outcome = (trade.outcome ?? "UP").toUpperCase();
         const marketEnd = market?.end_epoch ?? null;
-        const fillMid = midAtFill(samples, trade.trade_ts, trade.outcome ?? "UP");
+        const fillMid = midAtFill(samples, trade.trade_ts, outcome);
         const m1 = horizonMid(
           samples,
           trade.trade_ts + 1,
           marketEnd,
-          trade.outcome ?? "UP",
+          outcome,
         );
         const m10 = horizonMid(
           samples,
           trade.trade_ts + 10,
           marketEnd,
-          trade.outcome ?? "UP",
+          outcome,
         );
         const m60 = horizonMid(
           samples,
           trade.trade_ts + 60,
           marketEnd,
-          trade.outcome ?? "UP",
+          outcome,
         );
         const endMid =
           marketEnd == null
             ? null
-            : (midBefore(
-                samples,
-                marketEnd,
-                trade.outcome ?? "UP",
-                END_TOLERANCE,
-              ) ??
-              midAfter(
-                samples,
-                marketEnd,
-                trade.outcome ?? "UP",
-                5,
-              ));
+            : (midBefore(samples, marketEnd, outcome, END_TOLERANCE) ??
+              midAfter(samples, marketEnd, outcome, 5));
 
         updateResearchTradeEnrichment({
           runId,
