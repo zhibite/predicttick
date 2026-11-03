@@ -1,0 +1,14 @@
+[Unit]
+Description=PolyKlines SQLite backup
+After=polyklines.service
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/polyklines
+Environment=POLY_DB_PATH=/home/ubuntu/polyklines/data/live/polyklines.sqlite
+Environment=POLY_APP_DB_PATH=/home/ubuntu/polyklines/data/app/app.sqlite
+Environment=POLY_BACKUP_DIR=/home/ubuntu/polyklines-backups
+Environment=POLY_BACKUP_KEEP_APP=14
+Environment=POLY_BACKUP_KEEP_MARKET=7
+ExecStart=/usr/bin/node scripts/backup.mjs

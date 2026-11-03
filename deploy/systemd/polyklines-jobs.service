@@ -1,0 +1,21 @@
+[Unit]
+Description=PolyKlines export/backtest jobs worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/polyklines
+ExecStart=/usr/bin/node dist/jobs.mjs
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+Environment=POLY_DB_PATH=/home/ubuntu/polyklines/data/live/polyklines.sqlite
+Environment=POLY_APP_DB_PATH=/home/ubuntu/polyklines/data/app/app.sqlite
+Environment=POLY_EXPORT_WORKER=1
+Environment=POLY_BACKTEST_WORKER=1
+Nice=10
+
+[Install]
+WantedBy=multi-user.target
