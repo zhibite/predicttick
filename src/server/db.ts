@@ -65,6 +65,44 @@ const MIGRATIONS: Migration[] = [
     `,
   },
   {
+    version: 3,
+    name: "future.news gap backfill",
+    sql: `
+      CREATE TABLE IF NOT EXISTS samples_backfill (
+        slug TEXT NOT NULL,
+        ts INTEGER NOT NULL,
+        up_bid REAL,
+        up_ask REAL,
+        up_mid REAL,
+        up_last REAL,
+        down_bid REAL,
+        down_ask REAL,
+        down_mid REAL,
+        down_last REAL,
+        source TEXT NOT NULL DEFAULT 'future.news',
+        fetched_at INTEGER NOT NULL,
+        PRIMARY KEY (slug, ts)
+      ) WITHOUT ROWID;
+      CREATE INDEX IF NOT EXISTS idx_samples_backfill_slug
+        ON samples_backfill(slug, ts);
+
+      CREATE VIEW IF NOT EXISTS samples_all AS
+        SELECT slug, ts, up_bid, up_ask, up_mid, up_last,
+               down_bid, down_ask, down_mid, down_last,
+               'live' AS source
+        FROM samples
+        UNION ALL
+        SELECT b.slug, b.ts, b.up_bid, b.up_ask, b.up_mid, b.up_last,
+               b.down_bid, b.down_ask, b.down_mid, b.down_last,
+               b.source
+        FROM samples_backfill b
+        WHERE NOT EXISTS (
+          SELECT 1 FROM samples s
+          WHERE s.slug = b.slug AND s.ts = b.ts
+        );
+    `,
+  },
+  {
     version: 2,
     name: "coverage rollups",
     sql: `

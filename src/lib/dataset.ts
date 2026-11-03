@@ -7,7 +7,7 @@ import {
   listDayMarkets,
   listSeriesRows,
 } from "@/server/query/markets";
-import { listSamples } from "@/server/query/samples";
+import { listSamplesWithBackfill } from "@/server/query/samples";
 import { assetLabel } from "@/lib/format";
 import { PERIODS } from "@/lib/types";
 import type {
@@ -237,7 +237,7 @@ export async function getWindow(slug: string): Promise<WindowResponse | null> {
   const market = getMarketRow(slug);
   if (!market) return null;
 
-  const rows = listSamples(slug);
+  const rows = listSamplesWithBackfill(slug);
 
   const points: KlinePoint[] = rows.map((row) => ({
     t: row.ts * 1000,

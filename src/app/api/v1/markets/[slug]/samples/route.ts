@@ -10,7 +10,7 @@ import {
 } from "@/server/api/v1";
 import { getEntitlements } from "@/server/entitlements";
 import { getMarketRow } from "@/server/query/markets";
-import { listSamplesPage } from "@/server/query/samples";
+import { listSamplesPageWithBackfill } from "@/server/query/samples";
 
 export const dynamic = "force-dynamic";
 
@@ -72,7 +72,7 @@ export async function GET(
 
   const limit = parseLimit(search.get("limit"), 1000, 1000);
   const cursor = decodeCursor<SamplesCursor>(search.get("cursor"));
-  const rows = listSamplesPage({
+  const rows = listSamplesPageWithBackfill({
     slug,
     fromTs,
     toTsExclusive: toTs,
@@ -101,6 +101,7 @@ export async function GET(
           mid: row.down_mid,
           last: row.down_last,
         },
+        source: row.source ?? "live",
       })),
       pagination: {
         limit,

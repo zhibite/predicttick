@@ -11,7 +11,7 @@ import {
 } from "@/server/api/v1";
 import { parseApiRange } from "@/server/api/ranges";
 import { listExportMarkets } from "@/server/query/markets";
-import { listSamplesInWindow } from "@/server/query/samples";
+import { listSamplesInWindowWithBackfill } from "@/server/query/samples";
 import type { SampleRow } from "@/server/query/types";
 
 export const dynamic = "force-dynamic";
@@ -131,7 +131,7 @@ export async function GET(request: Request) {
   let seen = 0;
 
   for (const market of markets) {
-    const samples = listSamplesInWindow(
+    const samples = listSamplesInWindowWithBackfill(
       market.slug,
       market.start_epoch,
       market.end_epoch,

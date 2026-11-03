@@ -64,6 +64,8 @@ export interface SampleRow {
   down_ask: number | null;
   down_mid: number | null;
   down_last: number | null;
+  /** "live" for collector rows, "future.news" for reconstructed gaps. */
+  source?: string;
 }
 
 export interface MarketStatsRow {

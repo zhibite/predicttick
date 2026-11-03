@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "backfill:stats": "node scripts/backfill-stats.mjs",
+    "backfill:gaps": "node scripts/backfill-future-news.mjs",
     "create-admin": "node scripts/create-admin.mjs",
     "build:jobs": "node scripts/build-jobs.mjs",
     "backup": "node scripts/backup.mjs"
