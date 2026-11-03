@@ -10,10 +10,8 @@ import {
   DownloadIcon,
   GridIcon,
   HorizontaLDots,
-  LockIcon,
   ShootingStarIcon,
   TableIcon,
-  TrophyIcon,
   UserCircleIcon,
 } from "../icons/index";
 
@@ -34,11 +32,6 @@ const navItems: NavItem[] = [
     icon: <TableIcon />,
     name: "Markets",
     path: "/markets",
-  },
-  {
-    icon: <TrophyIcon />,
-    name: "Leaderboard",
-    path: "/leaderboard",
   },
   {
     icon: <ShootingStarIcon />,
@@ -64,21 +57,6 @@ const navItems: NavItem[] = [
     icon: <DocsIcon />,
     name: "API docs",
     path: "/api/docs",
-  },
-];
-
-const adminNavItems: NavItem[] = [
-  {
-    icon: <LockIcon />,
-    name: "Admin",
-    subItems: [
-      { name: "Leaderboard addresses", path: "/admin/leaderboard" },
-      { name: "Paper trading", path: "/admin/paper" },
-      { name: "Trader research", path: "/admin/research" },
-      { name: "Payment review", path: "/admin/payments" },
-      { name: "Payment settings", path: "/admin/settings/payments" },
-      { name: "System status", path: "/admin/system" },
-    ],
   },
 ];
 
@@ -220,33 +198,15 @@ const AppSidebar: React.FC = () => {
     {}
   );
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const [isAdmin, setIsAdmin] = useState(false);
 
   // const isActive = (path: string) => path === pathname;
    const isActive = useCallback((path: string) => path === pathname, [pathname]);
 
   useEffect(() => {
-    const controller = new AbortController();
-    fetch("/api/auth/me", { signal: controller.signal, cache: "no-store" })
-      .then(
-        (response) =>
-          response.json() as Promise<{
-            user?: { role?: string } | null;
-          }>,
-      )
-      .then((body) => setIsAdmin(body.user?.role === "admin"))
-      .catch(() => {
-        // Keep the sidebar in its signed-out state if the request fails.
-      });
-    return () => controller.abort();
-  }, []);
-
-  useEffect(() => {
     // Check if the current path matches any submenu item
     let submenuMatched = false;
     ["main", "others"].forEach((menuType) => {
-      if (menuType === "others" && !isAdmin) return;
-      const items = menuType === "main" ? navItems : adminNavItems;
+      const items = menuType === "main" ? navItems : [];
       items.forEach((nav, index) => {
         if (nav.subItems) {
           nav.subItems.forEach((subItem) => {
@@ -267,7 +227,7 @@ const AppSidebar: React.FC = () => {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- sync menu state with the current route
       setOpenSubmenu(null);
     }
-  }, [pathname, isActive, isAdmin]);
+  }, [pathname, isActive]);
 
   useEffect(() => {
     // Set the height of the submenu items when the submenu is opened
@@ -360,25 +320,6 @@ const AppSidebar: React.FC = () => {
               </h2>
               {renderMenuItems(navItems, "main")}
             </div>
-
-            {isAdmin && (
-              <div>
-                <h2
-                  className={`mb-4 mt-6 text-xs uppercase flex leading-[20px] text-gray-400 ${
-                    !isExpanded && !isHovered
-                      ? "lg:justify-center"
-                      : "justify-start"
-                  }`}
-                >
-                  {isExpanded || isHovered || isMobileOpen ? (
-                    "Admin"
-                  ) : (
-                    <HorizontaLDots />
-                  )}
-                </h2>
-                {renderMenuItems(adminNavItems, "others")}
-              </div>
-            )}
           </div>
         </nav>
       </div>

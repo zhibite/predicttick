@@ -19,7 +19,6 @@ export function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     "/account/:path*",
-    "/admin/:path*",
     "/backtest/:path*",
     "/download/:path*",
     "/strategies/:path*",

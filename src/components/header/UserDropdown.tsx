@@ -201,60 +201,6 @@ export default function UserDropdown() {
               Plans
             </DropdownItem>
           </li>
-          {me.role === "admin" && (
-            <>
-              <li>
-                <DropdownItem
-                  tag="a"
-                  href="/admin/leaderboard"
-                  onItemClick={closeDropdown}
-                  baseClassName="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
-                >
-                  Leaderboard addresses
-                </DropdownItem>
-              </li>
-              <li>
-                <DropdownItem
-                  tag="a"
-                  href="/admin/paper"
-                  onItemClick={closeDropdown}
-                  baseClassName="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
-                >
-                  Paper trading
-                </DropdownItem>
-              </li>
-              <li>
-                <DropdownItem
-                  tag="a"
-                  href="/admin/research"
-                  onItemClick={closeDropdown}
-                  baseClassName="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
-                >
-                  Trader research
-                </DropdownItem>
-              </li>
-              <li>
-                <DropdownItem
-                  tag="a"
-                  href="/admin/payments"
-                  onItemClick={closeDropdown}
-                  baseClassName="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
-                >
-                  Payment review
-                </DropdownItem>
-              </li>
-              <li>
-                <DropdownItem
-                  tag="a"
-                  href="/admin/settings/payments"
-                  onItemClick={closeDropdown}
-                  baseClassName="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
-                >
-                  Payment settings
-                </DropdownItem>
-              </li>
-            </>
-          )}
         </ul>
 
         <button

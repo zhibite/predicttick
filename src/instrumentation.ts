@@ -7,25 +7,6 @@ export async function register() {
   const { getAppDb } = await import("./server/app-db");
   getAppDb();
 
-  // Manually curated trader leaderboard: refresh from Polymarket's public
-  // Data/Gamma APIs on a schedule while the web process is running.
-  if (process.env.POLY_LEADERBOARD_SYNC !== "0") {
-    const { startLeaderboardSync } = await import("./server/leaderboard/sync");
-    startLeaderboardSync();
-  }
-
-  // Admin-only paper trading engine. It is a no-op until an active paper
-  // strategy exists, and never places real orders.
-  if (process.env.POLY_PAPER_ENGINE !== "0") {
-    const { startPaperEngine } = await import("./server/paper/engine");
-    startPaperEngine();
-  }
-
-  if (process.env.POLY_RESEARCH_ENGINE !== "0") {
-    const { startResearchWorker } = await import("./server/research/engine");
-    startResearchWorker();
-  }
-
   // Production runs export/backtest jobs in the separate polyklines-jobs
   // service. Set POLY_INLINE_WORKERS=1 only for local dev or a single-process
   // deployment without the jobs service.

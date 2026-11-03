@@ -97,14 +97,6 @@ export default async function AccountPage() {
             >
               View plans
             </Link>
-            {user.role === "admin" && (
-              <Link
-                href="/admin/payments"
-                className="inline-flex rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
-              >
-                Payment review
-              </Link>
-            )}
           </div>
         </section>
 
